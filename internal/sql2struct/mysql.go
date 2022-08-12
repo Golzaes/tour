@@ -16,8 +16,10 @@ type DBModel struct {
 type DBInfo struct {
 	DBType   string
 	Host     string
+	Port     uint32
 	UserName string
 	Password string
+	DBName   string
 	Charset  string
 }
 
@@ -64,20 +66,23 @@ func NewDBModel(info *DBInfo) *DBModel {
 
 func (m *DBModel) Connect() error {
 	var err error
-	s := "%s:%s@tcp(%s)/information_schema?" +
-		"charset=%s&parseTime=True&loc=Local"
+	s := "%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local"
 	dsn := fmt.Sprintf(
 		s,
 		m.DBInfo.UserName,
 		m.DBInfo.Password,
 		m.DBInfo.Host,
+		m.DBInfo.Port,
+		m.DBInfo.DBName,
 		m.DBInfo.Charset,
 	)
 	m.DBEngine, err = sql.Open(m.DBInfo.DBType, dsn)
 	if err != nil {
 		return err
 	}
-
+	if err = m.DBEngine.Ping(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -101,7 +106,6 @@ func (m *DBModel) GetColumns(dbName, tableName string) ([]*TableColumn, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		columns = append(columns, &column)
 	}
 
